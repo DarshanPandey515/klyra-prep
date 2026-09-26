@@ -1,0 +1,37 @@
+[project]
+name = "interview-prep"
+version = "0.1.0"
+description = "AI mock-interview agent that generates questions, evaluates answers, and gives feedback"
+readme = "README.md"
+license = { text = "MIT" }
+keywords = ["interview", "langgraph", "pydantic-ai", "llm", "cli"]
+authors = [
+    { name = "Darshan Pandey", email = "pandeydarshan61@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "dotenv>=0.9.9",
+    "groq>=1.7.0",
+    "langchain>=1.4.2",
+    "langgraph>=1.2.12",
+    "pydantic>=2.13.5",
+    "pydantic-ai>=2.51.0",
+]
+
+[project.scripts]
+interview-prep = "interview_prep.__main__:main"
+
+[dependency-groups]
+dev = ["ipython>=9.17.1", "ruff>=0.8.0"]
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

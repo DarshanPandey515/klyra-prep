@@ -1,0 +1,53 @@
+"""Pydantic schemas and the LangGraph conversation state."""
+
+from typing import Literal, TypedDict
+
+from pydantic import BaseModel, Field
+
+InterviewStatus = Literal[
+    "preparing",
+    "asking",
+    "listening",
+    "evaluating",
+    "follow_up",
+    "completed",
+]
+
+
+class InterviewQuestion(BaseModel):
+    """A single question prepared for the candidate."""
+
+    original_question: str
+    interview_question: str
+    expected_answer: str
+    evaluation_criteria: list[str] = Field(default_factory=list)
+    follow_up_question: list[str] = Field(default_factory=list)
+
+
+class AnswerEvaluation(BaseModel):
+    """Scored result for one candidate answer."""
+
+    question: str
+    user_answer: str
+    score: int = Field(ge=0, le=10)
+    weaknesses: list[str] = Field(default_factory=list)
+    strengths: list[str] = Field(default_factory=list)
+    feedback: str
+
+
+class InterviewConversationState(TypedDict):
+    """State threaded through the interview graph."""
+
+    role: str
+    experience_level: str
+    interview_type: str
+    input_questions: list[str]
+    prepared_questions: list[InterviewQuestion]
+    current_question_index: int
+    current_question: InterviewQuestion | None
+    current_answer: str
+    evaluations: list[AnswerEvaluation]
+    conversation_history: list[dict[str, str]]
+    status: InterviewStatus
+    overall_score: float | None
+    final_feedback: str | None
