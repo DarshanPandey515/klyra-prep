@@ -1,4 +1,3 @@
-import json
 import sys
 
 from interview_prep.graph import workflow
@@ -18,7 +17,7 @@ INITIAL_STATE: InterviewConversationState = {
         "What is variable scope in Python?",
         "What is the difference between local, global, and nonlocal variables?",
         "What are default arguments in Python?",
-        "Why are mutable default arguments dangerous?"    
+        "Why are mutable default arguments dangerous?",
     ],
     "prepared_questions": [],
     "current_question_index": 0,
@@ -34,9 +33,9 @@ INITIAL_STATE: InterviewConversationState = {
 
 def main() -> int:
     result = workflow.invoke(dict(INITIAL_STATE))
-    
+
     print(result)
-        
+
     return 0
 
 
