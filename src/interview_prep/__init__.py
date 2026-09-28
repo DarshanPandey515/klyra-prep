@@ -1,6 +1,4 @@
-"""AI interview prep: question generation, answer evaluation, and feedback."""
-
-from interview_prep.graph import agent, build_graph, workflow
+from interview_prep.graph import build_graph, workflow
 from interview_prep.models import (
     AnswerEvaluation,
     InterviewConversationState,

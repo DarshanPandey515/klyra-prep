@@ -1,5 +1,3 @@
-"""Pydantic schemas and the LangGraph conversation state."""
-
 from typing import Literal, TypedDict
 
 from pydantic import BaseModel, Field
@@ -51,3 +49,40 @@ class InterviewConversationState(TypedDict):
     status: InterviewStatus
     overall_score: float | None
     final_feedback: str | None
+
+
+
+
+
+class PreparedQuestion(BaseModel):
+    original_question: str
+    interview_question: str
+    expected_answer: str
+    evaluation_criteria: list[str] = Field(default_factory=list)
+    follow_up_questions: list[str] = Field(default_factory=list)
+
+
+class QuestionPreparationOutput(BaseModel):
+    questions: list[PreparedQuestion]
+
+
+class AnswerEvaluation(BaseModel):
+    score: int = Field(ge=0, le=10)
+    strengths: list[str] = Field(default_factory=list)
+    weaknesses: list[str] = Field(default_factory=list)
+    feedback: str
+
+    should_follow_up: bool
+    follow_up_reason: str | None = None
+
+
+class FollowUpOutput(BaseModel):
+    question: str
+    reason: str
+
+
+class FinalEvaluation(BaseModel):
+    overall_score: float = Field(ge=0, le=10)
+    strengths: list[str] = Field(default_factory=list)
+    weaknesses: list[str] = Field(default_factory=list)
+    feedback: str

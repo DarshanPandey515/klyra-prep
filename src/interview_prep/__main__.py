@@ -1,5 +1,3 @@
-"""Command-line entrypoint: `interview-prep` or `python -m interview_prep`."""
-
 import json
 import sys
 
@@ -10,7 +8,18 @@ INITIAL_STATE: InterviewConversationState = {
     "role": "backend engineer",
     "experience_level": "mid",
     "interview_type": "technical",
-    "input_questions": [],
+    "input_questions": [
+        "What are mutable and immutable objects in Python?",
+        "What is the difference between == and is in Python?",
+        "What are Python's built-in data types?",
+        "What is the difference between a list, tuple, set, and dictionary?",
+        "What is the difference between shallow copy and deep copy?",
+        "What are *args and **kwargs?",
+        "What is variable scope in Python?",
+        "What is the difference between local, global, and nonlocal variables?",
+        "What are default arguments in Python?",
+        "Why are mutable default arguments dangerous?"    
+    ],
     "prepared_questions": [],
     "current_question_index": 0,
     "current_question": None,
@@ -24,11 +33,10 @@ INITIAL_STATE: InterviewConversationState = {
 
 
 def main() -> int:
-    """Print the graph diagram and run it once against a blank state."""
-    print(workflow.get_graph().draw_mermaid())
     result = workflow.invoke(dict(INITIAL_STATE))
-    print(json.dumps(result["conversation_history"], indent=2))
-    assert result["status"] == "preparing", "working node did not run"
+    
+    print(result)
+        
     return 0
 
 
