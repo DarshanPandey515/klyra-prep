@@ -1,6 +1,6 @@
 from langgraph.graph import END, START, StateGraph
 
-from interview_prep.agents import question_preparation_agent, answer_evaluation_agent
+from interview_prep.agents import question_preparation_agent, answer_evaluation_agent, follow_up_agent
 from interview_prep.models import InterviewConversationState
 from interview_prep.utils import build_prompt
 
@@ -42,6 +42,14 @@ def answer_evaluate(state: InterviewConversationState) -> dict:
         "should_follow_up": result.should_follow_up,
         "follow_up_reason": result.follow_up_reason,
     }
+
+def follow_up_agent(state: InterviewConversationState) -> dict:
+    prompt = build_prompt(
+        prepared_questions=state["prepared_questions"],
+        expected_answer=state["expec"]
+    )
+    
+    
 
 def build_graph():
     graph = StateGraph(InterviewConversationState)
