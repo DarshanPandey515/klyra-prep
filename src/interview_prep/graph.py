@@ -1,6 +1,6 @@
 from langgraph.graph import END, START, StateGraph
 
-from interview_prep.agents import question_preparation_agent
+from interview_prep.agents import question_preparation_agent, answer_evaluation_agent
 from interview_prep.models import InterviewConversationState
 from interview_prep.utils import build_prompt
 
@@ -14,11 +14,6 @@ def prepare_interview_questions(state: InterviewConversationState) -> dict:
     )
 
     response = question_preparation_agent.run_sync(prompt)
-
-    print("=" * 20)
-    print(response)
-    print("=" * 20)
-
     result = response.output
 
     return {
@@ -26,15 +21,37 @@ def prepare_interview_questions(state: InterviewConversationState) -> dict:
         "current_question_index": 0,
         "status": "asking",
     }
+ 
 
+def answer_evaluate(state: InterviewConversationState) -> dict:
+    prompt = build_prompt(
+        prepared_questions=state["prepared_questions"],
+        role=state["role"],
+        experience=state["experience_level"],
+        interview_type=state["interview_type"],
+    )
+    
+    response = answer_evaluation_agent.run_sync(prompt)
+    result = response.output
+    
+    return {
+        "score": result.score,
+        "strengths": result.strengths,
+        "weaknesses": result.weaknesses,
+        "feedback": result.feedback,
+        "should_follow_up": result.should_follow_up,
+        "follow_up_reason": result.follow_up_reason,
+    }
 
 def build_graph():
     graph = StateGraph(InterviewConversationState)
 
     graph.add_node("prepare_interview_questions", prepare_interview_questions)
+    graph.add_node("answer_evaluate", answer_evaluate)
 
     graph.add_edge(START, "prepare_interview_questions")
-    graph.add_edge("prepare_interview_questions", END)
+    graph.add_edge("prepare_interview_questions", "answer_evaluate")
+    graph.add_edge("answer_evaluate", END)
 
     return graph.compile()
 
