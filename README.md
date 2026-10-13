@@ -1,24 +1,97 @@
-# interview-prep
+# klyra-prep
 
-AI mock-interview agent. It generates interview questions from a role and
-experience level, evaluates each answer against a rubric, and produces an
-overall score with feedback.
+AI mock-interview agent. It rewrites a question bank to fit a target role and
+experience level, then walks the candidate through it, scoring each answer and
+tracking follow-ups.
 
 Built on [LangGraph](https://langchain-ai.github.io/langgraph/) for the
-conversation flow and [Pydantic AI](https://ai.pydantic.dev/) for the model
-calls, with Groq (`openai/gpt-oss-20b`) as the default inference provider.
+conversation flow and [Pydantic AI](https://ai.pydantic.dev/) for typed model
+calls, served by Groq (`openai/gpt-oss-20b`).
 
-## Status
+## Architecture
 
-Early scaffold. The graph compiles and runs end to end, but `working` is a
-placeholder node — question generation, evaluation, and follow-up nodes are
-not implemented yet.
+Two ideas hold the project together:
+
+1. **A single state object flows through every node.** Nodes are plain
+   functions that read the state and return the keys they change. No node
+   mutates anything in place, so any node can be run and tested alone.
+2. **The schema is the contract.** Each agent declares a Pydantic model as its
+   `output_type`. The model is validated before it reaches your code, so a node
+   never has to guess what shape a response is in.
+
+### Runtime flow
+
+```mermaid
+flowchart TD
+    START(["START"]) --> PREP["prepare_interview_questions"]
+    PREP --> EVAL["answer_evaluate"]
+    EVAL --> STOP(["END"])
+
+    PREP -.->|"not implemented"| FOLLOW["follow_up_agent"]
+    EVAL -.->|"not implemented"| FINAL["final_evaluation_agent"]
+
+    style PREP fill:#e8f5e9,stroke:#43a047
+    style EVAL fill:#fff8e1,stroke:#f9a825
+    style FOLLOW stroke-dasharray: 5 5
+    style FINAL stroke-dasharray: 5 5
+```
+
+Solid nodes run today. Dashed nodes are the remaining interview loop. Both
+nodes talk to Groq through a Pydantic AI agent and write their result back into
+`InterviewConversationState`.
+
+### Module layering
+
+```mermaid
+flowchart TD
+    CLI["__main__.py<br/>entrypoint and INITIAL_STATE"]
+    GRAPH["graph.py<br/>node functions and edges"]
+    AGENTS["agents.py<br/>agent definitions"]
+    PROMPTS["prompts.py<br/>system prompts"]
+    UTILS["utils.py<br/>build_prompt"]
+    MODELS["models.py<br/>schemas and state"]
+    GROQ["groq:openai/gpt-oss-20b"]
+
+    CLI --> GRAPH
+    GRAPH --> AGENTS
+    GRAPH --> UTILS
+    GRAPH --> MODELS
+    AGENTS --> PROMPTS
+    AGENTS --> MODELS
+    AGENTS --> GROQ
+
+    style MODELS fill:#e8f5e9,stroke:#43a047
+    style GROQ fill:#e3f2fd,stroke:#1e88e5
+```
+
+Dependencies point one way only. `models.py` imports nothing from the project,
+so the data contract can be read on its own.
+
+| Module | Responsibility |
+| --- | --- |
+| `__main__.py` | CLI entrypoint, seeded `INITIAL_STATE` |
+| `graph.py` | Node functions and the edges between them |
+| `agents.py` | One `Agent` per task, plus the shared model config |
+| `prompts.py` | System prompts, one constant per agent |
+| `utils.py` | `build_prompt`, which renders state into a prompt |
+| `models.py` | Pydantic output schemas and `InterviewConversationState` |
+
+### Output handling
+
+Every agent runs with native JSON-schema output rather than tool calls. This is
+not a stylistic choice: Pydantic AI defaults to tool calls for this model, and
+`gpt-oss` in harmony mode then wraps the payload in its own envelope, renames
+fields, and returns lists as plain strings. Groq's JSON Schema Mode returns the
+declared schema correctly, so `agents.py` overrides the model profile to force
+it. The preparation agent also sets `max_tokens` explicitly, because it writes
+an entire question bank in one response and would otherwise hit the default cap
+mid-JSON.
 
 ## Requirements
 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/)
-- A Groq API key (free tier is enough)
+- A Groq API key (the free tier is enough)
 
 ## Setup
 
@@ -36,25 +109,8 @@ uv run interview-prep              # console script
 uv run python -m interview_prep    # equivalent
 ```
 
-This prints the Mermaid diagram of the compiled graph and runs it once
-against a blank state, so you can confirm wiring and your API key are good.
-
-## Layout
-
-```
-interview-prep/
-├── src/interview_prep/
-│   ├── __init__.py      public API re-exports
-│   ├── __main__.py      CLI entrypoint + initial state
-│   ├── graph.py         agent, node functions, graph assembly
-│   └── models.py        Pydantic schemas + graph state
-├── notebooks/           scratch notebooks
-└── pyproject.toml
-```
-
-`models.py` holds the data contract, `graph.py` holds the flow. Everything the
-graph needs is a plain function over `InterviewConversationState`, so nodes can
-be added and tested one at a time.
+Both invoke the compiled graph once against the seeded state and print the
+resulting state, so you can confirm wiring and your API key are working.
 
 ## Development
 
@@ -66,13 +122,21 @@ uv add <package>                # add a runtime dependency
 uv add --dev <package>          # add a dev dependency
 ```
 
-## Roadmap
+## Known issues
 
-- Question-generation node (`preparing`)
-- Answer-evaluation node with rubric scoring (`evaluating`)
-- Conditional follow-up edges
-- Interactive CLI loop with streamed output
+Tracked in the code, not yet fixed:
 
-## License
-
-MIT — see [LICENSE](LICENSE).
+- **`answer_evaluate` output is discarded.** It returns `score`, `strengths`,
+  `weaknesses`, `feedback`, `should_follow_up`, and `follow_up_reason`, but
+  `InterviewConversationState` has no such keys, so LangGraph drops them. The
+  node should append an `AnswerEvaluation` to the state's `evaluations` list
+  instead.
+- **The evaluation prompt is missing its subject.** It sends all prepared
+  questions but not the candidate's answer, and uses `experience=` where the
+  state field is `experience_level`.
+- **`follow_up_agent()` in `graph.py` is a broken stub.** It indexes
+  `state["expec"]`, returns `None`, and shadows the `follow_up_agent` imported
+  from `agents.py`. It is not registered as a node, so it does not run yet.
+- **Question count is not validated.** The preparation agent occasionally
+  returns fewer questions than it was given, and the graph proceeds with a
+  partial bank.
